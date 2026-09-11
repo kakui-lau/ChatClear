@@ -57,12 +57,19 @@ const connectionMessages: Record<string, string> = {
 
 const getErrorCode = (error: unknown): number | null => toNumber(toObject(error).code)
 
+const getUnauthenticatedStatus = (settings: StoredConnectionSettings): AppStatus => ({
+  configured: true,
+  authorized: false,
+  profile: null,
+  proxyEnabled: settings.proxy !== null
+})
+
 export class TelegramService {
   private client: Client | null = null
   private clientTask: Promise<Client> | null = null
   private settings: StoredConnectionSettings | null | undefined
   private pendingInput: PendingInput | null = null
-  private loginTask: Promise<void> | null = null
+  private loginTask: Promise<Client> | null = null
   private loginTimeout: ReturnType<typeof setTimeout> | null = null
   private loginTimedOut = false
   private suppressLoginErrors = false
@@ -84,29 +91,27 @@ export class TelegramService {
       return { configured: false, authorized: false, profile: null, proxyEnabled: false }
     }
 
-    const client = await this.ensureClient()
-    const state = await client.invoke({ _: 'getAuthorizationState' })
-    if (state._ !== 'authorizationStateReady') {
-      return {
-        configured: true,
-        authorized: false,
-        profile: null,
-        proxyEnabled: settings.proxy !== null
-      }
-    }
+    const statusTask = this.resolveConfiguredStatus(settings)
+    const status = await Promise.race([statusTask, sleep(3_000).then(() => null)])
+    if (status) return status
 
-    return {
-      configured: true,
-      authorized: true,
-      profile: await this.getProfile(client),
-      proxyEnabled: settings.proxy !== null
-    }
+    void statusTask
+      .then((lateStatus) => {
+        if (lateStatus.authorized) {
+          this.emit({
+            stage: 'ready',
+            message: `已恢复 ${lateStatus.profile?.displayName ?? '本地会话'}`
+          })
+        }
+      })
+      .catch(() => undefined)
+    return getUnauthenticatedStatus(settings)
   }
 
   async saveConnectionSettings(input: ConnectionSettingsInput): Promise<AppStatus> {
     await this.stopClientForReconfiguration()
     this.settings = await this.credentialStore.save(input)
-    return this.getStatus()
+    return getUnauthenticatedStatus(this.settings)
   }
 
   async clearConnectionSettings(): Promise<AppStatus> {
@@ -129,12 +134,43 @@ export class TelegramService {
       throw new Error('请输入带国家区号的手机号，例如 +8613812345678')
     }
 
-    const client = await this.ensureClient()
     this.emit({ stage: 'connecting', message: '正在连接 Telegram…' })
     this.loginTimedOut = false
     this.suppressLoginErrors = false
 
-    const task = client.login({
+    const task = this.runLogin(normalizedPhone)
+    this.loginTask = task
+    this.loginTimeout = setTimeout(() => {
+      if (!this.loginTask || this.pendingInput) return
+      this.loginTimedOut = true
+      this.emit({
+        stage: 'error',
+        message: '连接 Telegram 超时。请检查网络，或返回连接设置配置可用的代理后重试。'
+      })
+      void this.abortLoginClient()
+    }, 25_000)
+    void task
+      .then(async (client) => {
+        this.clearLoginTimeout()
+        const profile = await this.getProfile(client)
+        this.emit({ stage: 'ready', message: `已登录 ${profile.displayName}` })
+      })
+      .catch((error: unknown) => {
+        this.clearLoginTimeout()
+        this.rejectPendingInput('登录已终止')
+        if (!this.loginTimedOut && !this.suppressLoginErrors) {
+          this.emit({ stage: 'error', message: sanitizeError(error) })
+        }
+      })
+      .finally(() => {
+        this.loginTask = null
+        this.loginTimedOut = false
+      })
+  }
+
+  private async runLogin(normalizedPhone: string): Promise<Client> {
+    const client = await this.ensureClient()
+    await client.login({
       type: 'user',
       getPhoneNumber: async (retry) => {
         if (retry) throw new Error('手机号无效，请重新开始登录')
@@ -174,34 +210,7 @@ export class TelegramService {
         throw new Error('ChatClear 不创建新账号，请先使用 Telegram 官方客户端完成注册')
       }
     })
-
-    this.loginTask = task
-    this.loginTimeout = setTimeout(() => {
-      if (!this.loginTask || this.pendingInput) return
-      this.loginTimedOut = true
-      this.emit({
-        stage: 'error',
-        message: '连接 Telegram 超时。请检查网络，或返回连接设置配置可用的代理后重试。'
-      })
-      void this.abortLoginClient()
-    }, 25_000)
-    void task
-      .then(async () => {
-        this.clearLoginTimeout()
-        const profile = await this.getProfile(client)
-        this.emit({ stage: 'ready', message: `已登录 ${profile.displayName}` })
-      })
-      .catch((error: unknown) => {
-        this.clearLoginTimeout()
-        this.rejectPendingInput('登录已终止')
-        if (!this.loginTimedOut && !this.suppressLoginErrors) {
-          this.emit({ stage: 'error', message: sanitizeError(error) })
-        }
-      })
-      .finally(() => {
-        this.loginTask = null
-        this.loginTimedOut = false
-      })
+    return client
   }
 
   submitAuthInput(kind: AuthInputKind, value: string): void {
@@ -460,6 +469,19 @@ export class TelegramService {
     }
 
     return client
+  }
+
+  private async resolveConfiguredStatus(settings: StoredConnectionSettings): Promise<AppStatus> {
+    const client = await this.ensureClient()
+    const state = await client.invoke({ _: 'getAuthorizationState' })
+    if (state._ !== 'authorizationStateReady') return getUnauthenticatedStatus(settings)
+
+    return {
+      configured: true,
+      authorized: true,
+      profile: await this.getProfile(client),
+      proxyEnabled: settings.proxy !== null
+    }
   }
 
   private async requireAuthorizedClient(): Promise<Client> {
