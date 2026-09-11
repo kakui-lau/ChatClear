@@ -89,9 +89,9 @@ ChatClear 仅从 Telegram 获取整理列表所需的元数据：会话名称、
 
 本地数据通常位于 Electron 的应用数据目录：
 
-- macOS：`~/Library/Application Support/ChatClear`
-- Windows：`%APPDATA%\ChatClear`
-- Linux：`$XDG_CONFIG_HOME/ChatClear` 或 `~/.config/ChatClear`
+- macOS：`~/Library/Application Support/chatclear`
+- Windows：`%APPDATA%\chatclear`
+- Linux：`$XDG_CONFIG_HOME/chatclear` 或 `~/.config/chatclear`
 
 完整说明见 [PRIVACY.md](./PRIVACY.md) 和 [SECURITY.md](./SECURITY.md)。
 
