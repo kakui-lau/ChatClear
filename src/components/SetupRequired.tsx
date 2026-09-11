@@ -1,0 +1,157 @@
+import { useState, type FormEvent } from 'react'
+import type { ConnectionSettingsInput, ProxyType } from '../../shared/contracts'
+import { Brand } from './Brand'
+
+interface SetupRequiredProps {
+  busy: boolean
+  error: string | null
+  onSave(settings: ConnectionSettingsInput): Promise<void>
+}
+
+export function SetupRequired({ busy, error, onSave }: SetupRequiredProps) {
+  const [apiId, setApiId] = useState('')
+  const [apiHash, setApiHash] = useState('')
+  const [proxyType, setProxyType] = useState<ProxyType>('none')
+  const [proxyServer, setProxyServer] = useState('127.0.0.1')
+  const [proxyPort, setProxyPort] = useState('7890')
+  const [proxyUsername, setProxyUsername] = useState('')
+  const [proxyPassword, setProxyPassword] = useState('')
+
+  const handleSubmit = async (event: FormEvent) => {
+    event.preventDefault()
+    await onSave({
+      apiId,
+      apiHash,
+      proxy: {
+        type: proxyType,
+        server: proxyServer,
+        port: Number(proxyPort),
+        username: proxyUsername,
+        password: proxyPassword
+      }
+    })
+  }
+
+  return (
+    <main className="auth-shell setup-shell">
+      <section className="auth-card setup-card" aria-labelledby="setup-heading">
+        <Brand />
+        <p className="eyebrow">FIRST-RUN SETUP</p>
+        <h1 id="setup-heading">配置 Telegram 连接</h1>
+        <p>
+          使用你自己在 Telegram 申请的 API 凭证。ChatClear
+          不内置开发者凭证，保存后仅在本机加密存储。
+        </p>
+
+        <form className="auth-form" onSubmit={handleSubmit}>
+          <div className="field-row">
+            <label htmlFor="api-id">API ID</label>
+            <button
+              className="inline-link"
+              type="button"
+              onClick={() => void window.chatclear.openExternal('https://my.telegram.org/apps')}
+            >
+              前往申请
+            </button>
+          </div>
+          <input
+            id="api-id"
+            autoFocus
+            autoComplete="off"
+            inputMode="numeric"
+            name="telegram-api-id"
+            placeholder="例如：12345678"
+            value={apiId}
+            onChange={(event) => setApiId(event.target.value)}
+          />
+
+          <label htmlFor="api-hash">API Hash</label>
+          <input
+            id="api-hash"
+            autoCapitalize="none"
+            autoComplete="off"
+            name="telegram-api-hash"
+            spellCheck={false}
+            type="password"
+            placeholder="填写 32 位十六进制字符…"
+            value={apiHash}
+            onChange={(event) => setApiHash(event.target.value)}
+          />
+
+          <label htmlFor="proxy-type">网络代理（可选）</label>
+          <select
+            id="proxy-type"
+            name="proxy-type"
+            value={proxyType}
+            onChange={(event) => setProxyType(event.target.value as ProxyType)}
+          >
+            <option value="none">不使用代理</option>
+            <option value="socks5">SOCKS5</option>
+            <option value="http">HTTP CONNECT</option>
+          </select>
+
+          {proxyType !== 'none' ? (
+            <div className="proxy-fields">
+              <label htmlFor="proxy-server">代理地址</label>
+              <input
+                id="proxy-server"
+                autoComplete="off"
+                name="proxy-server"
+                placeholder="例如：127.0.0.1"
+                value={proxyServer}
+                onChange={(event) => setProxyServer(event.target.value)}
+              />
+              <label htmlFor="proxy-port">端口</label>
+              <input
+                id="proxy-port"
+                inputMode="numeric"
+                max="65535"
+                min="1"
+                name="proxy-port"
+                type="number"
+                value={proxyPort}
+                onChange={(event) => setProxyPort(event.target.value)}
+              />
+              <label htmlFor="proxy-username">用户名（可选）</label>
+              <input
+                id="proxy-username"
+                autoComplete="off"
+                name="proxy-username"
+                spellCheck={false}
+                value={proxyUsername}
+                onChange={(event) => setProxyUsername(event.target.value)}
+              />
+              <label htmlFor="proxy-password">密码（可选）</label>
+              <input
+                id="proxy-password"
+                autoComplete="off"
+                name="proxy-password"
+                type="password"
+                value={proxyPassword}
+                onChange={(event) => setProxyPassword(event.target.value)}
+              />
+            </div>
+          ) : null}
+
+          <button
+            className="primary-button"
+            disabled={busy || !apiId.trim() || !apiHash.trim()}
+            type="submit"
+          >
+            {busy ? '正在安全保存…' : '保存连接设置'}
+          </button>
+        </form>
+
+        {error ? (
+          <p className="error-line" role="alert">
+            {error}
+          </p>
+        ) : null}
+        <div className="privacy-note">
+          <span aria-hidden="true">◆</span>
+          <p>API 凭证及代理认证信息由操作系统安全存储加密，不会写入安装包或上传。</p>
+        </div>
+      </section>
+    </main>
+  )
+}

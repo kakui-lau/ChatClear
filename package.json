@@ -1,0 +1,104 @@
+{
+  "name": "chatclear",
+  "version": "0.2.0",
+  "private": true,
+  "author": "ChatClear",
+  "description": "A local-first desktop utility for reviewing and leaving Telegram groups.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kakui-lau/ChatClear.git"
+  },
+  "bugs": "https://github.com/kakui-lau/ChatClear/issues",
+  "homepage": "https://github.com/kakui-lau/ChatClear#readme",
+  "engines": {
+    "node": ">=24 <25",
+    "pnpm": ">=11 <12"
+  },
+  "main": "out/main/index.js",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "pnpm typecheck && electron-vite build",
+    "package": "pnpm build && electron-builder --dir",
+    "dist": "pnpm build && electron-builder",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.node.json",
+    "test": "vitest run",
+    "check": "pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm build",
+    "lint": "eslint .",
+    "format:check": "prettier --check .",
+    "format": "prettier --write ."
+  },
+  "dependencies": {
+    "prebuilt-tdlib": "0.1008067.0",
+    "react": "19.1.1",
+    "react-dom": "19.1.1",
+    "tdl": "8.1.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@types/node": "24.3.1",
+    "@types/react": "19.1.12",
+    "@types/react-dom": "19.1.9",
+    "@vitejs/plugin-react": "5.0.2",
+    "electron": "44.3.0",
+    "electron-builder": "26.15.3",
+    "electron-vite": "4.0.0",
+    "eslint": "10.10.0",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "eslint-plugin-react-refresh": "0.5.6",
+    "globals": "16.3.0",
+    "prettier": "3.9.6",
+    "tdlib-types": "npm:@prebuilt-tdlib/types@0.1008067.0",
+    "typescript": "5.9.2",
+    "typescript-eslint": "8.70.0",
+    "vitest": "5.0.0"
+  },
+  "optionalDependencies": {
+    "@prebuilt-tdlib/darwin-arm64": "0.1008067.0",
+    "@prebuilt-tdlib/darwin-x64": "0.1008067.0",
+    "@prebuilt-tdlib/linux-arm64-glibc": "0.1008067.0",
+    "@prebuilt-tdlib/linux-arm64-musl": "0.1008067.0",
+    "@prebuilt-tdlib/linux-x64-glibc": "0.1008067.0",
+    "@prebuilt-tdlib/linux-x64-musl": "0.1008067.0",
+    "@prebuilt-tdlib/win32-x64": "0.1008067.0"
+  },
+  "build": {
+    "appId": "com.chatclear.desktop",
+    "productName": "ChatClear",
+    "artifactName": "${productName}-${version}-${arch}.${ext}",
+    "directories": {
+      "buildResources": "build"
+    },
+    "asar": true,
+    "asarUnpack": [
+      "node_modules/tdl/**/*",
+      "node_modules/prebuilt-tdlib/**/*"
+    ],
+    "files": [
+      "out/**/*",
+      "node_modules/**/*",
+      "package.json"
+    ],
+    "mac": {
+      "category": "public.app-category.utilities",
+      "icon": "build/icon.icns",
+      "target": [
+        "dmg",
+        "zip"
+      ]
+    },
+    "win": {
+      "icon": "build/icon.ico",
+      "target": [
+        "nsis"
+      ]
+    },
+    "linux": {
+      "category": "Utility",
+      "icon": "build/icon.png",
+      "target": [
+        "AppImage"
+      ]
+    }
+  },
+  "packageManager": "pnpm@11.0.8"
+}

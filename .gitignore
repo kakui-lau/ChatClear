@@ -1,0 +1,10 @@
+node_modules/
+out/
+dist/
+.env
+.env.local
+*.log
+.DS_Store
+coverage/
+output/
+build/icon.iconset/
