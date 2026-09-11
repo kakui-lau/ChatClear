@@ -1,44 +1,51 @@
-import type { Community } from '../../shared/contracts'
+import type { Community, Locale, Observation } from '../../shared/contracts'
+import { tx } from '../i18n'
 
 interface CommunityTableProps {
   communities: Community[]
   selectedIds: Set<number>
   protectedIds: Set<number>
+  systemProtectedIds: Set<number>
+  observations: Observation[]
+  locale: Locale
   onToggleSelected(id: number): void
   onToggleProtected(id: number): void
 }
 
-const memberFormatter = new Intl.NumberFormat('zh-CN', { notation: 'compact' })
-const dateFormatter = new Intl.DateTimeFormat('zh-CN', {
-  year: 'numeric',
-  month: 'short',
-  day: 'numeric'
-})
-
-const formatLastActivity = (timestamp: number | null) => {
-  if (!timestamp) return '暂无记录'
-  return dateFormatter.format(new Date(timestamp * 1000))
-}
-
-const roleLabel: Record<Community['role'], string> = {
-  owner: '群主',
-  admin: '管理员',
-  member: '成员'
+const formatLastActivity = (timestamp: number | null, locale: Locale) => {
+  if (!timestamp) return tx(locale, '暂无记录', 'No activity')
+  return new Intl.DateTimeFormat(locale, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric'
+  }).format(new Date(timestamp * 1000))
 }
 
 export function CommunityTable({
   communities,
   selectedIds,
   protectedIds,
+  systemProtectedIds,
+  observations,
+  locale,
   onToggleSelected,
   onToggleProtected
 }: CommunityTableProps) {
+  const memberFormatter = new Intl.NumberFormat(locale, { notation: 'compact' })
+  const observationMap = new Map(observations.map((item) => [item.chatId, item.dueAt]))
+  const roleLabel: Record<Community['role'], string> = {
+    owner: tx(locale, '群主', 'Owner'),
+    admin: tx(locale, '管理员', 'Admin'),
+    member: tx(locale, '成员', 'Member')
+  }
   if (communities.length === 0) {
     return (
       <div className="empty-state">
         <span aria-hidden="true">⌁</span>
-        <h2>没有匹配的群组</h2>
-        <p>调整搜索或筛选条件后再试。</p>
+        <h2>{tx(locale, '没有匹配的群组', 'No matching conversations')}</h2>
+        <p>
+          {tx(locale, '调整搜索或筛选条件后再试。', 'Adjust the search or filters and try again.')}
+        </p>
       </div>
     )
   }
@@ -46,23 +53,26 @@ export function CommunityTable({
   return (
     <div className="table-wrap">
       <table>
-        <caption className="sr-only">Telegram 群组与频道列表</caption>
+        <caption className="sr-only">
+          {tx(locale, 'Telegram 群组与频道列表', 'Telegram groups and channels')}
+        </caption>
         <thead>
           <tr>
             <th className="check-column">
-              <span className="sr-only">选择</span>
+              <span className="sr-only">{tx(locale, '选择', 'Select')}</span>
             </th>
-            <th>名称</th>
-            <th>类型</th>
-            <th>身份</th>
-            <th>成员</th>
-            <th>最近活动</th>
-            <th className="protect-column">保护</th>
+            <th>{tx(locale, '名称', 'Name')}</th>
+            <th>{tx(locale, '类型', 'Type')}</th>
+            <th>{tx(locale, '身份', 'Role')}</th>
+            <th>{tx(locale, '成员', 'Members')}</th>
+            <th>{tx(locale, '最近活动', 'Last activity')}</th>
+            <th className="protect-column">{tx(locale, '保护', 'Protect')}</th>
           </tr>
         </thead>
         <tbody>
           {communities.map((community) => {
             const isProtected = protectedIds.has(community.id)
+            const isSystemProtected = systemProtectedIds.has(community.id)
             const isOwner = community.role === 'owner'
             const disabled = isProtected || isOwner
 
@@ -73,7 +83,7 @@ export function CommunityTable({
               >
                 <td className="check-column">
                   <input
-                    aria-label={`选择 ${community.title}`}
+                    aria-label={`${tx(locale, '选择', 'Select')} ${community.title}`}
                     checked={selectedIds.has(community.id)}
                     disabled={disabled}
                     type="checkbox"
@@ -87,13 +97,23 @@ export function CommunityTable({
                     </span>
                     <span>
                       <strong>{community.title}</strong>
-                      <small>{community.archived ? '已归档' : '主列表'}</small>
+                      <small>
+                        {community.archived
+                          ? tx(locale, '已归档', 'Archived')
+                          : tx(locale, '主列表', 'Main')}
+                        {community.muted ? ` · ${tx(locale, '已静音', 'Muted')}` : ''}
+                        {observationMap.has(community.id)
+                          ? ` · ${tx(locale, '观察至', 'Watch until')} ${new Date(observationMap.get(community.id)!).toLocaleDateString(locale)}`
+                          : ''}
+                      </small>
                     </span>
                   </div>
                 </td>
                 <td>
                   <span className={`kind-badge kind-${community.kind}`}>
-                    {community.kind === 'group' ? '群组' : '频道'}
+                    {community.kind === 'group'
+                      ? tx(locale, '群组', 'Group')
+                      : tx(locale, '频道', 'Channel')}
                   </span>
                 </td>
                 <td>
@@ -106,17 +126,39 @@ export function CommunityTable({
                     ? '—'
                     : memberFormatter.format(community.memberCount)}
                 </td>
-                <td>{formatLastActivity(community.lastActivity)}</td>
+                <td>{formatLastActivity(community.lastActivity, locale)}</td>
                 <td className="protect-column">
                   {isOwner ? (
-                    <span className="owner-lock" title="群主创建的群默认禁止批量退出">
-                      锁定
+                    <span
+                      className="owner-lock"
+                      title={tx(
+                        locale,
+                        '群主创建的群默认禁止批量操作',
+                        'Owner conversations are excluded from batch actions'
+                      )}
+                    >
+                      {tx(locale, '锁定', 'Locked')}
+                    </span>
+                  ) : isSystemProtected ? (
+                    <span
+                      className="owner-lock"
+                      title={tx(
+                        locale,
+                        '已在设置中启用管理员保护',
+                        'Administrator protection is enabled in Settings'
+                      )}
+                    >
+                      {tx(locale, '管理员保护', 'Protected')}
                     </span>
                   ) : (
                     <button
-                      aria-label={`${isProtected ? '取消保护' : '保护'} ${community.title}`}
+                      aria-label={`${isProtected ? tx(locale, '取消保护', 'Unprotect') : tx(locale, '保护', 'Protect')} ${community.title}`}
                       className={`protect-button ${isProtected ? 'is-protected' : ''}`}
-                      title={isProtected ? '取消保护' : '加入白名单'}
+                      title={
+                        isProtected
+                          ? tx(locale, '取消保护', 'Unprotect')
+                          : tx(locale, '加入白名单', 'Add to allowlist')
+                      }
                       type="button"
                       onClick={() => onToggleProtected(community.id)}
                     >

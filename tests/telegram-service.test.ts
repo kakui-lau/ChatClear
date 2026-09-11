@@ -91,7 +91,8 @@ describe('TelegramService connection orchestration', () => {
       configured: true,
       authorized: false,
       profile: null,
-      proxyEnabled: true
+      proxyEnabled: true,
+      activeAccountId: 'default'
     })
     expect(mocks.createClient).not.toHaveBeenCalled()
   })

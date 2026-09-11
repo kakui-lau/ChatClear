@@ -1,56 +1,82 @@
 import { useState, type FormEvent } from 'react'
-import type { AuthEvent, AuthInputKind } from '../../shared/contracts'
+import type { AccountSummary, AuthEvent, AuthInputKind, Locale } from '../../shared/contracts'
+import { tx } from '../i18n'
 import { Brand } from './Brand'
 
 interface LoginScreenProps {
+  accounts: AccountSummary[]
+  activeAccountId: string
   authEvent: AuthEvent
   busy: boolean
   error: string | null
+  locale: Locale
   proxyEnabled: boolean
   onStart(phoneNumber: string): Promise<void>
   onSubmit(kind: AuthInputKind, value: string): Promise<void>
   onChangeSettings(): Promise<void>
+  onSwitchAccount(accountId: string): Promise<void>
+  onAddAccount(): Promise<void>
 }
 
-const stageDetails: Partial<
-  Record<
-    AuthEvent['stage'],
-    { kind: AuthInputKind; label: string; type: string; placeholder: string }
-  >
-> = {
-  code: {
-    kind: 'code',
-    label: '登录验证码',
-    type: 'text',
-    placeholder: '输入 Telegram 中收到的验证码…'
-  },
-  password: {
-    kind: 'password',
-    label: '两步验证密码',
-    type: 'password',
-    placeholder: '输入你的两步验证密码…'
-  },
-  email: { kind: 'email', label: '验证邮箱', type: 'email', placeholder: '例如：name@example.com' },
-  emailCode: {
-    kind: 'emailCode',
-    label: '邮箱验证码',
-    type: 'text',
-    placeholder: '输入邮箱验证码…'
+const getStageDetails = (
+  locale: Locale,
+  stage: AuthEvent['stage']
+): { kind: AuthInputKind; label: string; type: string; placeholder: string } | undefined => {
+  switch (stage) {
+    case 'code':
+      return {
+        kind: 'code',
+        label: tx(locale, '登录验证码', 'Login code'),
+        type: 'text',
+        placeholder: tx(locale, '输入 Telegram 中收到的验证码…', 'Enter the code from Telegram…')
+      }
+    case 'password':
+      return {
+        kind: 'password',
+        label: tx(locale, '两步验证密码', 'Two-step verification password'),
+        type: 'password',
+        placeholder: tx(
+          locale,
+          '输入你的两步验证密码…',
+          'Enter your two-step verification password…'
+        )
+      }
+    case 'email':
+      return {
+        kind: 'email',
+        label: tx(locale, '验证邮箱', 'Verification email'),
+        type: 'email',
+        placeholder: 'name@example.com'
+      }
+    case 'emailCode':
+      return {
+        kind: 'emailCode',
+        label: tx(locale, '邮箱验证码', 'Email verification code'),
+        type: 'text',
+        placeholder: tx(locale, '输入邮箱验证码…', 'Enter the email verification code…')
+      }
+    default:
+      return undefined
   }
 }
 
 export function LoginScreen({
+  accounts,
+  activeAccountId,
   authEvent,
   busy,
   error,
+  locale,
   proxyEnabled,
   onStart,
   onSubmit,
-  onChangeSettings
+  onChangeSettings,
+  onSwitchAccount,
+  onAddAccount
 }: LoginScreenProps) {
   const [phoneNumber, setPhoneNumber] = useState('')
   const [authValue, setAuthValue] = useState('')
-  const details = stageDetails[authEvent.stage]
+  const details = getStageDetails(locale, authEvent.stage)
 
   const handlePhoneSubmit = async (event: FormEvent) => {
     event.preventDefault()
@@ -70,11 +96,35 @@ export function LoginScreen({
         <Brand />
         <div className="auth-copy">
           <p className="eyebrow">LOCAL-FIRST DESKTOP UTILITY</p>
-          <h1 id="login-heading">安静地整理你的群组列表</h1>
+          <h1 id="login-heading">
+            {tx(locale, '安静地整理你的群组列表', 'A calmer Telegram community list')}
+          </h1>
           <p>
-            ChatClear（群清）使用 Telegram API。登录信息、群组数据和操作记录只保存在这台电脑上。
+            {tx(
+              locale,
+              'ChatClear（群清）使用 Telegram API。登录信息、群组数据和操作记录只保存在这台电脑上。',
+              'ChatClear uses the Telegram API. Login data, community metadata and activity history stay on this computer.'
+            )}
           </p>
         </div>
+
+        {accounts.length > 1 ? (
+          <label className="account-picker">
+            <span>{tx(locale, '登录账号', 'Account')}</span>
+            <select
+              disabled={busy}
+              value={activeAccountId}
+              onChange={(event) => void onSwitchAccount(event.target.value)}
+            >
+              {accounts.map((account) => (
+                <option key={account.id} value={account.id}>
+                  {account.displayName}
+                  {account.authorized ? '' : tx(locale, '（未登录）', ' (signed out)')}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
 
         {details ? (
           <form className="auth-form" onSubmit={handleAuthSubmit}>
@@ -93,14 +143,22 @@ export function LoginScreen({
               value={authValue}
               onChange={(event) => setAuthValue(event.target.value)}
             />
-            {authEvent.hint ? <p className="field-hint">密码提示：{authEvent.hint}</p> : null}
+            {authEvent.hint ? (
+              <p className="field-hint">
+                {tx(locale, '密码提示', 'Password hint')}：{authEvent.hint}
+              </p>
+            ) : null}
             <button className="primary-button" disabled={busy || !authValue.trim()} type="submit">
-              {busy ? '正在验证…' : '验证并继续'}
+              {busy
+                ? tx(locale, '正在验证…', 'Verifying…')
+                : tx(locale, '验证并继续', 'Verify & continue')}
             </button>
           </form>
         ) : (
           <form className="auth-form" onSubmit={handlePhoneSubmit}>
-            <label htmlFor="phone-number">Telegram 手机号</label>
+            <label htmlFor="phone-number">
+              {tx(locale, 'Telegram 手机号', 'Telegram phone number')}
+            </label>
             <input
               id="phone-number"
               autoFocus
@@ -109,13 +167,21 @@ export function LoginScreen({
               name="phone-number"
               spellCheck={false}
               type="tel"
-              placeholder="例如：+8613812345678"
+              placeholder={tx(locale, '例如：+8613812345678', 'For example: +12025550123')}
               value={phoneNumber}
               onChange={(event) => setPhoneNumber(event.target.value)}
             />
-            <p className="field-hint">请包含国家或地区代码。验证码通常发送到 Telegram 客户端内。</p>
+            <p className="field-hint">
+              {tx(
+                locale,
+                '请包含国家或地区代码。验证码通常发送到 Telegram 客户端内。',
+                'Include the country or region code. Telegram usually sends the code to another signed-in client.'
+              )}
+            </p>
             <button className="primary-button" disabled={busy || !phoneNumber.trim()} type="submit">
-              {busy ? '正在连接…' : '发送验证码'}
+              {busy
+                ? tx(locale, '正在连接…', 'Connecting…')
+                : tx(locale, '发送验证码', 'Send code')}
             </button>
           </form>
         )}
@@ -141,11 +207,23 @@ export function LoginScreen({
 
         <div className="privacy-note">
           <span aria-hidden="true">◆</span>
-          <p>不会读取消息正文，不会上传 session，也不会在未经确认时执行退出操作。</p>
+          <p>
+            {tx(
+              locale,
+              '不会读取消息正文，不会上传 session，也不会在未经确认时执行退出操作。',
+              'ChatClear never reads message bodies, uploads sessions, or leaves conversations without confirmation.'
+            )}
+          </p>
         </div>
-        <button className="connection-settings-button" type="button" onClick={onChangeSettings}>
-          连接设置{proxyEnabled ? ' · 已启用代理' : ''}
-        </button>
+        <div className="login-actions">
+          <button className="connection-settings-button" type="button" onClick={onChangeSettings}>
+            {tx(locale, '连接设置', 'Connection settings')}
+            {proxyEnabled ? tx(locale, ' · 已启用代理', ' · Proxy enabled') : ''}
+          </button>
+          <button className="connection-settings-button" type="button" onClick={onAddAccount}>
+            {tx(locale, '添加账号', 'Add account')}
+          </button>
+        </div>
       </section>
     </main>
   )

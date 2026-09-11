@@ -1,9 +1,13 @@
+import { readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { app, BrowserWindow, ipcMain, screen, shell } from 'electron'
+import { app, BrowserWindow, crashReporter, dialog, ipcMain, net, screen, shell } from 'electron'
 import type {
+  AccountPreferences,
   AppWindowMode,
   AuthInputKind,
+  BatchAction,
   ConnectionSettingsInput,
+  DesktopPreferences,
   ProxyType
 } from '../../shared/contracts'
 import { TelegramService } from './telegram-service'
@@ -12,12 +16,98 @@ let mainWindow: BrowserWindow | null = null
 let telegramService: TelegramService | null = null
 let shutdownStarted = false
 let shutdownComplete = false
+let crashReporterStarted = false
 
 const hasSingleInstanceLock = app.requestSingleInstanceLock()
 
 const getTelegramService = (): TelegramService => {
   if (!telegramService) throw new Error('Telegram 服务尚未初始化')
   return telegramService
+}
+
+const toObject = (value: unknown): Record<string, unknown> =>
+  value !== null && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {}
+
+const applyCrashReporting = (preferences: DesktopPreferences): void => {
+  const submitURL = process.env.CHATCLEAR_CRASH_REPORT_URL?.trim()
+  if (!crashReporterStarted) {
+    crashReporter.start({
+      companyName: 'ChatClear',
+      productName: 'ChatClear',
+      submitURL: submitURL || undefined,
+      uploadToServer: Boolean(submitURL && preferences.crashReporting),
+      compress: true
+    })
+    crashReporterStarted = true
+    return
+  }
+  if (process.platform !== 'linux') {
+    crashReporter.setUploadToServer(Boolean(submitURL && preferences.crashReporting))
+  }
+}
+
+const compareVersions = (left: string, right: string): number => {
+  const normalize = (version: string) =>
+    version
+      .replace(/^v/i, '')
+      .split('.')
+      .map((part) => Number.parseInt(part, 10) || 0)
+  const leftParts = normalize(left)
+  const rightParts = normalize(right)
+  for (let index = 0; index < Math.max(leftParts.length, rightParts.length); index += 1) {
+    const difference = (leftParts[index] ?? 0) - (rightParts[index] ?? 0)
+    if (difference !== 0) return difference
+  }
+  return 0
+}
+
+const checkForUpdates = async () => {
+  const currentVersion = app.getVersion()
+  try {
+    const response = await net.fetch(
+      'https://api.github.com/repos/kakui-lau/ChatClear/releases/latest',
+      {
+        headers: { Accept: 'application/vnd.github+json' },
+        signal: AbortSignal.timeout(10_000)
+      }
+    )
+    if (response.status === 404) {
+      return {
+        state: 'current' as const,
+        currentVersion,
+        message: '尚未配置公开发行版本'
+      }
+    }
+    if (!response.ok) throw new Error(`更新服务器返回 ${response.status}`)
+    const release = toObject(await response.json())
+    const latestVersion =
+      typeof release.tag_name === 'string' ? release.tag_name.replace(/^v/, '') : ''
+    const releaseUrl = typeof release.html_url === 'string' ? release.html_url : undefined
+    if (!latestVersion) throw new Error('更新信息格式无效')
+    return {
+      state:
+        compareVersions(latestVersion, currentVersion) > 0
+          ? ('available' as const)
+          : ('current' as const),
+      currentVersion,
+      latestVersion,
+      releaseUrl
+    }
+  } catch (error) {
+    return {
+      state: 'error' as const,
+      currentVersion,
+      message: error instanceof Error ? error.message.slice(0, 200) : '检查更新失败'
+    }
+  }
+}
+
+const csvCell = (value: string | number): string => {
+  const text = String(value)
+  const safeText = /^[=+\-@\t\r]/.test(text) ? `'${text}` : text
+  return `"${safeText.replaceAll('"', '""')}"`
 }
 
 const createWindow = (): void => {
@@ -127,6 +217,14 @@ const registerIpc = (): void => {
   })
 
   ipcMain.handle('telegram:status', () => getTelegramService().getStatus())
+  ipcMain.handle('app:get-desktop-preferences', () => getTelegramService().getDesktopPreferences())
+  ipcMain.handle('app:save-desktop-preferences', async (_event, preferences: unknown) => {
+    const saved = await getTelegramService().saveDesktopPreferences(
+      preferences as DesktopPreferences
+    )
+    applyCrashReporting(saved)
+    return saved
+  })
   ipcMain.handle('telegram:save-connection-settings', (_event, settings: unknown) =>
     getTelegramService().saveConnectionSettings(parseConnectionSettings(settings))
   )
@@ -144,7 +242,14 @@ const registerIpc = (): void => {
     fitCompactWindow(contentHeight)
   })
   ipcMain.handle('app:open-external', (_event, url: unknown) => {
-    if (url !== 'https://my.telegram.org/apps') throw new Error('不允许打开该地址')
+    if (typeof url !== 'string') throw new Error('外部地址无效')
+    const parsed = new URL(url)
+    const allowed =
+      url === 'https://my.telegram.org/apps' ||
+      (parsed.protocol === 'https:' &&
+        parsed.hostname === 'github.com' &&
+        parsed.pathname.startsWith('/kakui-lau/ChatClear/releases'))
+    if (!allowed) throw new Error('不允许打开该地址')
     return shell.openExternal(url)
   })
   ipcMain.handle('telegram:start-login', (_event, phoneNumber: unknown) => {
@@ -161,11 +266,85 @@ const registerIpc = (): void => {
     return getTelegramService().submitAuthInput(kind as AuthInputKind, value)
   })
   ipcMain.handle('telegram:list-communities', () => getTelegramService().listCommunities())
+  ipcMain.handle('telegram:run-batch-action', (_event, action: unknown, chatIds: unknown) => {
+    const actions: BatchAction[] = ['leave', 'archive', 'unarchive', 'mute', 'clearHistory']
+    if (!actions.includes(action as BatchAction) || !Array.isArray(chatIds)) {
+      throw new Error('批量操作参数无效')
+    }
+    return getTelegramService().runBatchAction(action as BatchAction, chatIds as number[])
+  })
   ipcMain.handle('telegram:leave-communities', (_event, chatIds: unknown) => {
     if (!Array.isArray(chatIds)) throw new Error('群组列表无效')
     return getTelegramService().leaveCommunities(chatIds as number[])
   })
+  ipcMain.handle('telegram:get-pending-batch', () => getTelegramService().getPendingBatch())
+  ipcMain.handle('telegram:resume-pending-batch', () => getTelegramService().resumePendingBatch())
+  ipcMain.handle('telegram:retry-failed-batch', () => getTelegramService().retryFailedBatch())
   ipcMain.handle('telegram:cancel-leaving', () => getTelegramService().cancelLeaving())
+  ipcMain.handle('app:get-activity-history', () => getTelegramService().getActivityHistory())
+  ipcMain.handle('app:export-activity-history', async () => {
+    const history = await getTelegramService().getActivityHistory()
+    const result = await dialog.showSaveDialog({
+      title: '导出 ChatClear 操作报告',
+      defaultPath: `ChatClear-history-${new Date().toISOString().slice(0, 10)}.csv`,
+      filters: [{ name: 'CSV', extensions: ['csv'] }]
+    })
+    if (result.canceled || !result.filePath) return null
+    const rows = [
+      ['time', 'action', 'status', 'chat_id', 'title', 'message'].map(csvCell).join(','),
+      ...history.map((entry) =>
+        [
+          new Date(entry.createdAt).toISOString(),
+          entry.action,
+          entry.status,
+          entry.chatId,
+          entry.title,
+          entry.message ?? ''
+        ]
+          .map(csvCell)
+          .join(',')
+      )
+    ]
+    await writeFile(result.filePath, `\uFEFF${rows.join('\n')}\n`, { mode: 0o600 })
+    return result.filePath
+  })
+  ipcMain.handle('app:get-account-preferences', () => getTelegramService().getAccountPreferences())
+  ipcMain.handle('app:save-account-preferences', (_event, preferences: unknown) =>
+    getTelegramService().saveAccountPreferences(preferences as AccountPreferences)
+  )
+  ipcMain.handle('app:export-local-data', async () => {
+    const result = await dialog.showSaveDialog({
+      title: '备份 ChatClear 本地数据',
+      defaultPath: `ChatClear-backup-${new Date().toISOString().slice(0, 10)}.json`,
+      filters: [{ name: 'ChatClear JSON', extensions: ['json'] }]
+    })
+    if (result.canceled || !result.filePath) return null
+    const data = await getTelegramService().exportLocalData()
+    await writeFile(result.filePath, JSON.stringify(data, null, 2), { mode: 0o600 })
+    return result.filePath
+  })
+  ipcMain.handle('app:import-local-data', async () => {
+    const result = await dialog.showOpenDialog({
+      title: '恢复 ChatClear 本地数据',
+      properties: ['openFile'],
+      filters: [{ name: 'ChatClear JSON', extensions: ['json'] }]
+    })
+    if (result.canceled || !result.filePaths[0]) return
+    const raw = await readFile(result.filePaths[0], 'utf8')
+    if (raw.length > 10_000_000) throw new Error('备份文件过大')
+    await getTelegramService().importLocalData(JSON.parse(raw))
+  })
+  ipcMain.handle('telegram:list-accounts', () => getTelegramService().listAccounts())
+  ipcMain.handle('telegram:add-account', () => getTelegramService().addAccount())
+  ipcMain.handle('telegram:switch-account', (_event, accountId: unknown) => {
+    if (typeof accountId !== 'string') throw new Error('账号标识无效')
+    return getTelegramService().switchAccount(accountId)
+  })
+  ipcMain.handle('telegram:remove-account', (_event, accountId: unknown) => {
+    if (typeof accountId !== 'string') throw new Error('账号标识无效')
+    return getTelegramService().removeAccount(accountId)
+  })
+  ipcMain.handle('app:check-for-updates', () => checkForUpdates())
   ipcMain.handle('telegram:logout', () => getTelegramService().logout())
 }
 
@@ -179,9 +358,10 @@ if (!hasSingleInstanceLock) {
     mainWindow.focus()
   })
 
-  void app.whenReady().then(() => {
+  void app.whenReady().then(async () => {
     app.setAppUserModelId('com.chatclear.desktop')
     registerIpc()
+    applyCrashReporting(await getTelegramService().getDesktopPreferences())
     createWindow()
 
     app.on('activate', () => {

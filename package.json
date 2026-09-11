@@ -1,6 +1,6 @@
 {
   "name": "chatclear",
-  "version": "0.2.3",
+  "version": "0.3.0",
   "private": true,
   "author": "ChatClear",
   "description": "A local-first desktop utility for reviewing and leaving Telegram groups.",
@@ -81,6 +81,9 @@
     "mac": {
       "category": "public.app-category.utilities",
       "icon": "build/icon.icns",
+      "hardenedRuntime": true,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist",
       "target": [
         "dmg",
         "zip"
@@ -88,6 +91,7 @@
     },
     "win": {
       "icon": "build/icon.ico",
+      "signAndEditExecutable": true,
       "target": [
         "nsis"
       ]
