@@ -49,6 +49,7 @@ export interface ConnectionSettingsInput {
 }
 
 export type AppWindowMode = 'compact' | 'dashboard'
+export type DesktopPlatform = 'darwin' | 'win32' | 'linux'
 
 export type CommunityKind = 'group' | 'channel'
 export type CommunityRole = 'owner' | 'admin' | 'member'
@@ -80,6 +81,7 @@ export interface LeaveSummary {
 }
 
 export interface ChatClearApi {
+  readonly platform: DesktopPlatform
   getStatus(): Promise<AppStatus>
   saveConnectionSettings(settings: ConnectionSettingsInput): Promise<AppStatus>
   clearConnectionSettings(): Promise<AppStatus>

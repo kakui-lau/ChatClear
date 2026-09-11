@@ -1,7 +1,17 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { AuthEvent, AuthInputKind, ChatClearApi, LeaveProgress } from '../../shared/contracts'
+import type {
+  AuthEvent,
+  AuthInputKind,
+  ChatClearApi,
+  DesktopPlatform,
+  LeaveProgress
+} from '../../shared/contracts'
+
+const platform: DesktopPlatform =
+  process.platform === 'darwin' || process.platform === 'win32' ? process.platform : 'linux'
 
 const api: ChatClearApi = {
+  platform,
   getStatus: () => ipcRenderer.invoke('telegram:status'),
   saveConnectionSettings: (settings) =>
     ipcRenderer.invoke('telegram:save-connection-settings', settings),

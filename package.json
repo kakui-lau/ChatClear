@@ -1,6 +1,6 @@
 {
   "name": "chatclear",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "private": true,
   "author": "ChatClear",
   "description": "A local-first desktop utility for reviewing and leaving Telegram groups.",

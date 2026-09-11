@@ -53,6 +53,7 @@ export const createAcceptanceApi = (): ChatClearApi => {
   const progressListeners = new Set<(event: LeaveProgress) => void>()
 
   return {
+    platform: 'linux',
     getStatus: async () => status,
     saveConnectionSettings: async (settings) => {
       if (!/^\d{4,12}$/.test(settings.apiId) || !/^[a-f\d]{32}$/i.test(settings.apiHash)) {

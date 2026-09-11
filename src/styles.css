@@ -378,6 +378,9 @@ input::placeholder {
 .topbar input {
   -webkit-app-region: no-drag;
 }
+.platform-darwin .topbar {
+  padding-left: 104px;
+}
 .profile-block {
   display: flex;
   align-items: center;

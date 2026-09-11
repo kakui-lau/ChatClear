@@ -355,7 +355,7 @@ export default function App() {
   const leaving = leaveProgress?.status === 'started' || leaveProgress?.status === 'leaving'
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell platform-${window.chatclear.platform}`}>
       <a className="skip-link" href="#main-content">
         跳到主要内容
       </a>
