@@ -1,10 +1,10 @@
-# ChatClear 0.3.0 验收记录
+# ChatClear 0.3.1 验收记录
 
 验收日期：2026-09-11
 
 ## 结果
 
-0.3.0 的开发版、生产构建和 macOS arm64 安装包已通过本地验收。打包版能够恢复本机既有 Telegram 会话并同步群组元数据；验收过程没有勾选任何真实会话，也没有执行归档、静音、清除历史或退出群组。当前 macOS 包尚未使用 Developer ID 签名和公证，只适合内部测试。
+0.3.1 的开发版、生产构建和 macOS arm64 安装包已通过本地验收。打包版能够恢复本机既有 Telegram 会话并同步群组元数据；验收过程没有勾选任何真实会话，也没有执行归档、静音、清除历史或退出群组。当前 macOS 包使用完整临时签名，但尚未使用 Developer ID 签名和公证，只适合预发行测试。
 
 ## 自动化检查
 
@@ -15,7 +15,8 @@
 - `pnpm build`
 - `pnpm audit --prod`：未发现已知漏洞
 - `pnpm dist -- --mac --arm64`
-- `hdiutil verify dist/ChatClear-0.3.0-arm64.dmg`
+- `hdiutil verify dist/ChatClear-0.3.1-arm64.dmg`
+- `codesign --verify --deep --strict --verbose=4 dist/mac-arm64/ChatClear.app`
 
 ## 功能验收
 
@@ -37,7 +38,7 @@
 - 顶部联系与支持入口、Telegram 联系按钮和赞助地址复制
 - 启动更新检查、GitHub Release 下载入口和默认关闭的崩溃报告
 - 跳过链接、键盘焦点、减少动态效果和 Escape 取消
-- 打包版恢复既有本机会话并显示新 0.3.0 界面，无控制台阻断错误
+- 打包版恢复既有本机会话并显示新 0.3.1 界面，无控制台阻断错误
 
 ## 安全与生产包检查
 
@@ -49,7 +50,8 @@
 - 安装包中不存在 `.env`、验收模拟数据或 TDLib 数据库密钥
 - 用户在开发期间提供的 API ID/API Hash 未出现在应用目录、ASAR、DMG 或 ZIP 中
 - arm64 TDLib 动态库已包含在 `asar.unpacked` 中
-- 应用标识为 `com.chatclear.desktop`，产品名为 ChatClear，版本为 0.3.0
+- 应用标识为 `com.chatclear.desktop`，产品名为 ChatClear，版本为 0.3.1
+- macOS 应用完整临时签名通过严格校验，原生 TDLib 可在 Hardened Runtime 下正常载入
 - DMG 文件结构与校验有效
 
 ## 未执行的破坏性验收

@@ -1,6 +1,6 @@
 {
   "name": "chatclear",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "private": true,
   "author": "ChatClear",
   "description": "A local-first desktop utility for reviewing and leaving Telegram groups.",
@@ -18,8 +18,8 @@
   "scripts": {
     "dev": "electron-vite dev",
     "build": "pnpm typecheck && electron-vite build",
-    "package": "pnpm build && electron-builder --dir",
-    "dist": "pnpm build && electron-builder",
+    "package": "pnpm build && node scripts/package.mjs --dir",
+    "dist": "pnpm build && node scripts/package.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.node.json",
     "test": "vitest run",
     "check": "pnpm lint && pnpm format:check && pnpm typecheck && pnpm test && pnpm build",

@@ -28,7 +28,9 @@ ChatClear 使用 Telegram 官方 TDLib 同步群组和频道元数据，帮助�
 | Windows | x64                   | `.exe`           | NSIS 安装程序        |
 | Linux   | x64                   | `.AppImage`      | 下载后赋予执行权限   |
 
-当前公开包尚未配置 Apple Developer ID、苹果公证和 Windows Authenticode 签名，因此系统可能显示未知开发者或 SmartScreen 提示。请只从本仓库 Releases 下载，并在确认校验信息后安装。正式生产分发前应完成代码签名和公证。
+当前公开包尚未配置 Apple Developer ID、苹果公证和 Windows Authenticode 签名。macOS 包会使用完整的临时签名，但系统仍可能显示无法验证开发者；Windows 可能显示 SmartScreen 提示。请只从本仓库 Releases 下载，并在确认校验信息后安装。正式生产分发前应完成代码签名和公证。
+
+macOS 首次打开被拦截时，请在“系统设置 → 隐私与安全性”中核对应用名称后选择“仍要打开”。不要对来源不明或校验值不匹配的安装包绕过系统安全检查。
 
 ## 核心能力
 
@@ -153,8 +155,8 @@ pnpm dist -- --linux --x64
 
 ```bash
 pnpm check
-git tag v0.3.0
-git push origin v0.3.0
+git tag v0.3.1
+git push origin v0.3.1
 ```
 
 未配置签名 Secrets 时工作流仍会生成预发行测试包，但不应把它们描述为已签名版本。

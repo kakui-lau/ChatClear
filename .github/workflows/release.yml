@@ -39,17 +39,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm check
       - name: Build distributables
-        shell: bash
-        run: |
-          if [ -z "${CSC_LINK:-}" ]; then
-            export CSC_IDENTITY_AUTO_DISCOVERY=false
-          fi
-          for variable in CSC_LINK CSC_KEY_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID; do
-            if [ -z "${!variable:-}" ]; then
-              unset "$variable"
-            fi
-          done
-          pnpm exec electron-builder ${{ matrix.args }} --publish never
+        run: pnpm dist -- ${{ matrix.args }} --publish never
         env:
           CSC_LINK: ${{ matrix.name == 'macOS-arm64' && secrets.MAC_CSC_LINK || matrix.name == 'Windows-x64' && secrets.WIN_CSC_LINK || '' }}
           CSC_KEY_PASSWORD: ${{ matrix.name == 'macOS-arm64' && secrets.MAC_CSC_KEY_PASSWORD || matrix.name == 'Windows-x64' && secrets.WIN_CSC_KEY_PASSWORD || '' }}
