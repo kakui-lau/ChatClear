@@ -22,6 +22,7 @@ const api: ChatClearApi = {
   setWindowMode: (mode) => ipcRenderer.invoke('app:set-window-mode', mode),
   fitCompactWindow: (contentHeight) => ipcRenderer.invoke('app:fit-compact-window', contentHeight),
   openExternal: (url) => ipcRenderer.invoke('app:open-external', url),
+  copySponsorAddress: () => ipcRenderer.invoke('app:copy-sponsor-address'),
   startLogin: (phoneNumber) => ipcRenderer.invoke('telegram:start-login', phoneNumber),
   submitAuthInput: (kind, value) => ipcRenderer.invoke('telegram:submit-auth-input', kind, value),
   listCommunities: () => ipcRenderer.invoke('telegram:list-communities'),

@@ -2,109 +2,181 @@
   <img src="./public/chatclear-logo.png" width="112" height="112" alt="ChatClear logo">
 </p>
 
-# ChatClear（群清）
+<h1 align="center">ChatClear（群清）</h1>
 
-ChatClear 是一个本地优先的桌面群组整理工具。它通过 Telegram API 同步会话元数据，并在用户明确选择和确认后，串行执行整理操作。
+<p align="center">
+  本地优先、安全可控的 Telegram 群组与频道整理工具。
+</p>
 
-> 当前状态：0.3.0 预发行版。代码签名、公证和跨平台发行流程已经预留配置，但正式公开发行仍需配置证书、GitHub Secrets 并完成真实账号的小批量验收。
+<p align="center">
+  <a href="https://github.com/kakui-lau/ChatClear/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/kakui-lau/ChatClear/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://github.com/kakui-lau/ChatClear/releases"><img alt="Release" src="https://img.shields.io/github/v/release/kakui-lau/ChatClear?include_prereleases"></a>
+  <img alt="Platforms" src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-1f6f57">
+</p>
 
-## 已实现
+ChatClear 使用 Telegram 官方 TDLib 同步群组和频道元数据，帮助用户筛选、保护并批量整理会话。消息正文不会被读取；API 凭证、Telegram session、偏好和操作记录均保存在用户自己的电脑上。
 
-- 手机号、验证码、两步验证密码和邮箱验证登录流程
-- 首次启动时由用户自行填写 `api_id/api_hash`
-- SOCKS5 与 HTTP CONNECT 代理设置、连接状态提示和 25 秒超时恢复
-- API 凭证与代理认证信息使用操作系统安全存储加密
-- TDLib 本地数据库与系统安全存储保护的数据库密钥
-- 主列表及归档中的群组/频道同步，不读取消息正文
-- 包含/排除关键词、类型、位置、身份、成员数、活跃时间和观察清单组合筛选
-- 筛选方案保存、90 天未活跃快捷选择和 7 天观察清单
-- 按账号隔离的本地白名单；群主强制锁定，可选默认保护管理员
-- 归档、取消归档、静音、清除本人聊天历史和退出群组
-- 危险操作二次确认、串行执行、限流等待、进度显示、安全暂停、断点恢复和失败重试
-- 本地操作历史与 CSV 导出
-- 最多 10 个本地 Telegram 账号与独立加密 TDLib session
-- 本地偏好备份与恢复（不包含 API 凭证或 Telegram session）
-- 简体中文/英文、浅色/深色/跟随系统主题
-- 启动更新检查、GitHub Release 下载入口和默认关闭的可选崩溃报告
-- 注销 Telegram 会话
-- Electron 安全隔离：渲染进程不能访问 Node.js、应用凭证或 TDLib session
-- 单实例运行、受限权限、外部导航拦截与全局错误恢复界面
-- 键盘焦点、减少动态效果和自适应登录窗口等无障碍体验
+> ChatClear 是非官方 Telegram 客户端工具，与 Telegram 无隶属、合作或认可关系。请遵守 Telegram API 条款及所在地法律法规。
+
+## 下载
+
+前往 [GitHub Releases](https://github.com/kakui-lau/ChatClear/releases) 下载最新预发行版。
+
+| 系统    | 架构                  | 安装包           | 说明                 |
+| ------- | --------------------- | ---------------- | -------------------- |
+| macOS   | Apple Silicon / arm64 | `.dmg` 或 `.zip` | 适用于 M1 及后续芯片 |
+| Windows | x64                   | `.exe`           | NSIS 安装程序        |
+| Linux   | x64                   | `.AppImage`      | 下载后赋予执行权限   |
+
+当前公开包尚未配置 Apple Developer ID、苹果公证和 Windows Authenticode 签名，因此系统可能显示未知开发者或 SmartScreen 提示。请只从本仓库 Releases 下载，并在确认校验信息后安装。正式生产分发前应完成代码签名和公证。
+
+## 核心能力
+
+### 精准筛选
+
+- 包含与排除关键词，可用逗号组合多个条件
+- 按群组/频道、主列表/归档、群主/管理员/成员筛选
+- 按成员数量、最近活跃时间和观察清单筛选
+- 保存常用筛选方案，一键选择 90 天未活跃会话
+
+### 安全批处理
+
+- 批量归档、取消归档、静音、清除本人聊天历史和退出群组
+- 群主创建的会话始终锁定，可选择默认保护管理员会话
+- 本地白名单保护与 7 天观察清单
+- 危险操作需要输入精确确认短语
+- 串行执行、Telegram 限流等待、安全暂停、断点恢复和失败重试
+
+### 本地优先
+
+- 不读取或展示消息正文
+- 不上传 Telegram session，不提供云端账号托管
+- API 凭证、代理密码和 TDLib 数据库密钥由操作系统安全存储加密
+- 本地审计历史与 CSV 导出；导出时防止表格公式注入
+- 偏好备份只包含设置、筛选方案、白名单和观察清单
+- 最多管理 10 个本地账号，每个账号使用独立 TDLib 数据目录和密钥
+
+### 桌面体验
+
+- 简体中文与英文
+- 浅色、深色与跟随系统主题
+- 固定应用框架与单一列表滚动区域，适合大量群组
+- 键盘焦点、跳过链接和减少动态效果支持
+- 启动更新检查与 GitHub Release 下载入口
+- 默认关闭的可选崩溃报告
+
+## 快速开始
+
+1. 从 Releases 下载对应系统的安装包并启动 ChatClear。
+2. 登录 [my.telegram.org/apps](https://my.telegram.org/apps)，创建 Telegram API 应用并取得 `api_id` 和 `api_hash`。
+3. 在 ChatClear 首次启动页面输入自己的凭证；应用不会内置或共享开发者凭证。
+4. 输入带国家或地区代码的手机号，例如 `+8613812345678`。
+5. 在 Telegram 官方客户端中查看验证码，并按界面提示完成两步验证或邮箱验证。
+6. 如所在网络无法连接 Telegram，可在连接设置中配置 SOCKS5 或 HTTP CONNECT 代理。
+
+登录后先使用筛选、白名单和观察清单缩小范围，再审核所选会话。退出私有群后可能无法重新加入，建议先归档或观察，再进行不可撤销操作。
+
+## 数据与隐私
+
+ChatClear 仅从 Telegram 获取整理列表所需的元数据：会话名称、类型、成员数量、当前账号身份、归档/静音状态和最近活动时间。
+
+以下内容不会包含在偏好备份中：
+
+- `api_id`、`api_hash` 与代理认证信息
+- Telegram session 和 TDLib 数据库密钥
+- 手机号、验证码及两步验证密码
+- 本地操作历史、失败任务和未完成任务
+
+本地数据通常位于 Electron 的应用数据目录：
+
+- macOS：`~/Library/Application Support/ChatClear`
+- Windows：`%APPDATA%\ChatClear`
+- Linux：`$XDG_CONFIG_HOME/ChatClear` 或 `~/.config/ChatClear`
+
+完整说明见 [PRIVACY.md](./PRIVACY.md) 和 [SECURITY.md](./SECURITY.md)。
+
+## 技术架构
+
+```text
+React Renderer
+      │ 仅允许白名单 IPC
+Electron Preload
+      │ contextIsolation + sandbox
+Electron Main Process
+      ├── 系统安全存储
+      ├── 本地偏好与审计记录
+      └── tdl / Telegram TDLib
+```
+
+网络、登录、批处理、文件导入导出和系统能力全部位于 Electron 主进程。渲染进程不能访问 Node.js、凭证明文或 TDLib session。
 
 ## 本地开发
 
-要求 Node.js 24 和 pnpm 11。
+要求：
+
+- Node.js 24
+- pnpm 11
+- macOS、Windows 或 Linux 桌面环境
 
 ```bash
+git clone https://github.com/kakui-lau/ChatClear.git
+cd ChatClear
 pnpm install --frozen-lockfile
 pnpm dev
 ```
 
-首次启动后，在界面中填写从 [my.telegram.org/apps](https://my.telegram.org/apps) 取得的
-`api_id/api_hash`。开发构建和发行包都不包含任何预置 Telegram API 凭证。
-
-常用检查：
+质量检查与构建：
 
 ```bash
-pnpm typecheck
-pnpm lint
-pnpm format:check
-pnpm test
-pnpm build
-pnpm package
 pnpm check
+pnpm package
+pnpm dist -- --mac --arm64
+pnpm dist -- --win --x64
+pnpm dist -- --linux --x64
 ```
 
-不要把用户 session、验证码、两步验证密码或 Telegram API 凭证写入源码和日志。
+`pnpm check` 会依次执行 ESLint、Prettier、TypeScript、Vitest 和生产构建。请勿把 `.env`、用户 session、验证码、两步验证密码或 Telegram API 凭证提交到仓库。
 
-## 架构
+## 跨平台发布
 
-```text
-React renderer
-    │ 受限 IPC
-Electron preload
-    │ 白名单命令
-Electron main
-    │
-tdl Node binding
-    │
-Telegram TDLib
+[Release workflow](./.github/workflows/release.yml) 在推送 `v*` 标签时并行构建 macOS arm64、Windows x64 和 Linux x64 包，随后上传到同一个 GitHub Release。也可从 Actions 页面手动运行工作流，仅生成构建产物而不创建 Release。
+
+正式签名需要在 GitHub Secrets 中配置：
+
+| 平台         | Secrets                                                    |
+| ------------ | ---------------------------------------------------------- |
+| macOS 签名   | `MAC_CSC_LINK`、`MAC_CSC_KEY_PASSWORD`                     |
+| macOS 公证   | `APPLE_ID`、`APPLE_APP_SPECIFIC_PASSWORD`、`APPLE_TEAM_ID` |
+| Windows 签名 | `WIN_CSC_LINK`、`WIN_CSC_KEY_PASSWORD`                     |
+
+发布步骤：
+
+```bash
+pnpm check
+git tag v0.3.0
+git push origin v0.3.0
 ```
 
-Telegram 网络访问、登录流程、本地数据库和文件导入导出全部位于 Electron 主进程。渲染进程只能调用预定义且经过参数校验的接口。
+未配置签名 Secrets 时工作流仍会生成预发行测试包，但不应把它们描述为已签名版本。
 
-## 用户凭证与网络
+## 项目文档
 
-每位用户使用自己的 `api_id/api_hash`。凭证在首次启动页输入，由 Electron `safeStorage`
-加密后保存在当前操作系统用户的应用数据目录；渲染进程不会读回已保存的明文凭证。
+- [更新记录](./CHANGELOG.md)
+- [隐私说明](./PRIVACY.md)
+- [安全策略](./SECURITY.md)
+- [验收记录](./ACCEPTANCE.md)
+- [第三方声明](./THIRD_PARTY_NOTICES.md)
+- [贡献指南](./CONTRIBUTING.md)
+- [品牌规范](./docs/BRAND.md)
 
-部分网络无法直连 Telegram。此时可在首次启动页设置 SOCKS5 或 HTTP CONNECT 代理；本地代理常见地址为 `127.0.0.1`，实际端口以代理软件显示为准。连接超过 25 秒仍未进入验证码步骤时，应用会停止本次连接并提示检查网络或代理。
+## 联系与支持
 
-## 发行自动化与签名
+- Telegram：[@tg_kakui](https://t.me/tg_kakui)
+- Issues：[提交问题或功能建议](https://github.com/kakui-lau/ChatClear/issues)
+- 赞助地址：`0x435d2f7f70c220e4218adfa090da964928888888`
 
-`.github/workflows/release.yml` 可手动运行，或在推送 `v*` 标签时构建 macOS arm64、Windows x64 和 Linux x64 包；标签构建会创建 GitHub Release。未提供签名密钥时产物仅适合内部测试。
+赞助转账前请自行确认所使用的区块链网络、币种和地址。链上交易通常不可撤销。
 
-发行工作流按平台隔离签名凭据：macOS 使用 `MAC_CSC_LINK`、`MAC_CSC_KEY_PASSWORD`，Windows 使用 `WIN_CSC_LINK`、`WIN_CSC_KEY_PASSWORD`。macOS 已启用 Hardened Runtime 和最小运行权限；配置 `APPLE_ID`、`APPLE_APP_SPECIFIC_PASSWORD` 与 `APPLE_TEAM_ID` 后可由 Electron Builder 完成公证。所有值都应只保存在 GitHub Secrets 或受保护的发布机器中，不能写入仓库。
+## Telegram API 条款
 
-## 发布前清单
-
-- 配置 macOS Developer ID 签名与公证
-- 配置 Windows Authenticode 签名
-- 配置可信的更新签名；应用当前只检查 GitHub Release 并由用户打开下载页，不静默安装
-- 将隐私说明草案补齐发行主体、联系渠道、适用地区和用户权利
-- 在商店介绍与首次启动页明确声明使用 Telegram API
-- 不在产品名称或图标中冒充 Telegram 官方应用
-- 在测试账号和小批量真实账号上验证限流、断网与恢复流程
-- 对 TDLib 原生库和 Electron 依赖执行发布前供应链审计
-
-## 数据边界
-
-ChatClear 不读取消息正文，不上传 session，不提供云端账号托管，也不在后台自动退群。群组退出属于不可撤销操作；私有群可能需要新的邀请链接才能重新加入。
-
-详见 [PRIVACY.md](./PRIVACY.md)、[SECURITY.md](./SECURITY.md)、
-[THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md)、[更新记录](./CHANGELOG.md)、
-[参与开发](./CONTRIBUTING.md) 和 [品牌说明](./docs/BRAND.md)。
-
-## Telegram 条款
-
-本项目是使用 Telegram API 的非官方工具，与 Telegram 官方无隶属或认可关系。发行和使用时需遵守 [Telegram API Terms of Service](https://core.telegram.org/api/terms)。
+使用、修改或分发本项目时，请同时遵守 [Telegram API Terms of Service](https://core.telegram.org/api/terms)。应用名称、图标与介绍不得暗示 ChatClear 是 Telegram 官方产品。

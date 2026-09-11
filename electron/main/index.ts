@@ -1,14 +1,26 @@
 import { readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { app, BrowserWindow, crashReporter, dialog, ipcMain, net, screen, shell } from 'electron'
-import type {
-  AccountPreferences,
-  AppWindowMode,
-  AuthInputKind,
-  BatchAction,
-  ConnectionSettingsInput,
-  DesktopPreferences,
-  ProxyType
+import {
+  app,
+  BrowserWindow,
+  clipboard,
+  crashReporter,
+  dialog,
+  ipcMain,
+  net,
+  screen,
+  shell
+} from 'electron'
+import {
+  SPONSOR_ADDRESS,
+  TELEGRAM_CONTACT_URL,
+  type AccountPreferences,
+  type AppWindowMode,
+  type AuthInputKind,
+  type BatchAction,
+  type ConnectionSettingsInput,
+  type DesktopPreferences,
+  type ProxyType
 } from '../../shared/contracts'
 import { TelegramService } from './telegram-service'
 
@@ -246,12 +258,14 @@ const registerIpc = (): void => {
     const parsed = new URL(url)
     const allowed =
       url === 'https://my.telegram.org/apps' ||
+      url === TELEGRAM_CONTACT_URL ||
       (parsed.protocol === 'https:' &&
         parsed.hostname === 'github.com' &&
         parsed.pathname.startsWith('/kakui-lau/ChatClear/releases'))
     if (!allowed) throw new Error('不允许打开该地址')
     return shell.openExternal(url)
   })
+  ipcMain.handle('app:copy-sponsor-address', () => clipboard.writeText(SPONSOR_ADDRESS))
   ipcMain.handle('telegram:start-login', (_event, phoneNumber: unknown) => {
     if (typeof phoneNumber !== 'string' || phoneNumber.length > 32) {
       throw new Error('手机号格式无效')

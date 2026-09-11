@@ -70,5 +70,7 @@ jobs:
           merge-multiple: true
       - uses: softprops/action-gh-release@v2
         with:
+          name: ChatClear ${{ github.ref_name }}
+          prerelease: true
           generate_release_notes: true
           files: artifacts/*

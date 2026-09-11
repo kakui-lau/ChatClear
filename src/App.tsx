@@ -1,19 +1,20 @@
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
-import type {
-  AccountPreferences,
-  AccountSummary,
-  ActivityLogEntry,
-  AppStatus,
-  AuthEvent,
-  AuthInputKind,
-  BatchAction,
-  BatchTask,
-  Community,
-  ConnectionSettingsInput,
-  DesktopPreferences,
-  LeaveProgress,
-  SavedFilter,
-  UpdateStatus
+import {
+  TELEGRAM_CONTACT_URL,
+  type AccountPreferences,
+  type AccountSummary,
+  type ActivityLogEntry,
+  type AppStatus,
+  type AuthEvent,
+  type AuthInputKind,
+  type BatchAction,
+  type BatchTask,
+  type Community,
+  type ConnectionSettingsInput,
+  type DesktopPreferences,
+  type LeaveProgress,
+  type SavedFilter,
+  type UpdateStatus
 } from '../shared/contracts'
 import {
   defaultCommunityFilter,
@@ -28,6 +29,7 @@ import { HistoryDialog } from './components/HistoryDialog'
 import { LoginScreen } from './components/LoginScreen'
 import { SettingsDialog } from './components/SettingsDialog'
 import { SetupRequired } from './components/SetupRequired'
+import { SupportDialog } from './components/SupportDialog'
 import { tx } from './i18n'
 
 const initialAuthEvent: AuthEvent = { stage: 'idle' }
@@ -94,6 +96,7 @@ export default function App() {
   const [showConfirmation, setShowConfirmation] = useState(false)
   const [showHistory, setShowHistory] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
+  const [showSupport, setShowSupport] = useState(false)
   const [leaveProgress, setLeaveProgress] = useState<LeaveProgress | null>(null)
   const [updateStatus, setUpdateStatus] = useState<UpdateStatus>({
     state: 'idle',
@@ -668,6 +671,23 @@ export default function App() {
     }
   }
 
+  const handleOpenTelegram = async () => {
+    try {
+      await window.chatclear.openExternal(TELEGRAM_CONTACT_URL)
+    } catch (nextError) {
+      setError(formatError(nextError))
+    }
+  }
+
+  const handleCopySponsor = async () => {
+    try {
+      await window.chatclear.copySponsorAddress()
+    } catch (nextError) {
+      setError(formatError(nextError))
+      throw nextError
+    }
+  }
+
   if (!status) {
     if (error) {
       return (
@@ -734,6 +754,9 @@ export default function App() {
       <header className="topbar">
         <Brand />
         <div className="topbar-actions">
+          <button className="text-button" type="button" onClick={() => setShowSupport(true)}>
+            {tx(locale, '联系', 'Contact')}
+          </button>
           <button className="text-button" type="button" onClick={() => setShowHistory(true)}>
             {tx(locale, '历史', 'History')}
           </button>
@@ -1227,6 +1250,14 @@ export default function App() {
           onRestore={() => void handleRestore()}
           onCheckUpdates={() => void handleCheckUpdates()}
           onOpenRelease={() => void handleOpenRelease()}
+        />
+      ) : null}
+      {showSupport ? (
+        <SupportDialog
+          locale={locale}
+          onClose={() => setShowSupport(false)}
+          onCopySponsor={handleCopySponsor}
+          onOpenTelegram={() => void handleOpenTelegram()}
         />
       ) : null}
     </div>

@@ -1,5 +1,8 @@
 export type AuthInputKind = 'code' | 'password' | 'email' | 'emailCode'
 
+export const TELEGRAM_CONTACT_URL = 'https://t.me/tg_kakui'
+export const SPONSOR_ADDRESS = '0x435d2f7f70c220e4218adfa090da964928888888'
+
 export type AuthStage =
   | 'idle'
   | 'connecting'
@@ -177,6 +180,7 @@ export interface ChatClearApi {
   setWindowMode(mode: AppWindowMode): Promise<void>
   fitCompactWindow(contentHeight: number): Promise<void>
   openExternal(url: string): Promise<void>
+  copySponsorAddress(): Promise<void>
   startLogin(phoneNumber: string): Promise<void>
   submitAuthInput(kind: AuthInputKind, value: string): Promise<void>
   listCommunities(): Promise<Community[]>

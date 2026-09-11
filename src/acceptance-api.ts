@@ -172,6 +172,7 @@ export const createAcceptanceApi = (): ChatClearApi => {
     setWindowMode: async () => undefined,
     fitCompactWindow: async () => undefined,
     openExternal: async () => undefined,
+    copySponsorAddress: async () => undefined,
     startLogin: async () => {
       authListeners.forEach((listener) =>
         listener({ stage: 'connecting', message: '正在连接 Telegram…' })
