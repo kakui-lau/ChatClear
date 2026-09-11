@@ -323,7 +323,7 @@ export default function App() {
 
     return (
       <main className="loading-screen">
-        <img alt="" className="loading-mark" height="58" src="/chatclear-logo.png" width="58" />
+        <img alt="" className="loading-mark" height="58" src="./chatclear-logo.png" width="58" />
         <p>正在打开本地会话…</p>
       </main>
     )

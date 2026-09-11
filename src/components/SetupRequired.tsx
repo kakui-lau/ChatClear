@@ -13,7 +13,7 @@ export function SetupRequired({ busy, error, onSave }: SetupRequiredProps) {
   const [apiHash, setApiHash] = useState('')
   const [proxyType, setProxyType] = useState<ProxyType>('none')
   const [proxyServer, setProxyServer] = useState('127.0.0.1')
-  const [proxyPort, setProxyPort] = useState('7890')
+  const [proxyPort, setProxyPort] = useState('')
   const [proxyUsername, setProxyUsername] = useState('')
   const [proxyPassword, setProxyPassword] = useState('')
 
@@ -108,6 +108,7 @@ export function SetupRequired({ busy, error, onSave }: SetupRequiredProps) {
                 max="65535"
                 min="1"
                 name="proxy-port"
+                placeholder="例如：7890"
                 type="number"
                 value={proxyPort}
                 onChange={(event) => setProxyPort(event.target.value)}
@@ -130,12 +131,18 @@ export function SetupRequired({ busy, error, onSave }: SetupRequiredProps) {
                 value={proxyPassword}
                 onChange={(event) => setProxyPassword(event.target.value)}
               />
+              <p className="field-hint">请填写代理软件实际显示的 SOCKS5 或 HTTP 端口。</p>
             </div>
           ) : null}
 
           <button
             className="primary-button"
-            disabled={busy || !apiId.trim() || !apiHash.trim()}
+            disabled={
+              busy ||
+              !apiId.trim() ||
+              !apiHash.trim() ||
+              (proxyType !== 'none' && (!proxyServer.trim() || !proxyPort))
+            }
             type="submit"
           >
             {busy ? '正在安全保存…' : '保存连接设置'}

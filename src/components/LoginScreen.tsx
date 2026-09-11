@@ -125,7 +125,10 @@ export function LoginScreen({
             {authEvent.message}
           </div>
         ) : null}
-        {authEvent.message && authEvent.stage !== 'idle' && authEvent.stage !== 'otherDevice' ? (
+        {authEvent.message &&
+        authEvent.stage !== 'idle' &&
+        authEvent.stage !== 'otherDevice' &&
+        authEvent.stage !== 'error' ? (
           <p className="status-line" role="status">
             {authEvent.message}
           </p>

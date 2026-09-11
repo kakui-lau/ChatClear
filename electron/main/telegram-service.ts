@@ -1,5 +1,5 @@
-import { randomBytes } from 'node:crypto'
 import { chmod, mkdir, readFile, writeFile } from 'node:fs/promises'
+import { createConnection } from 'node:net'
 import { join } from 'node:path'
 import { app, safeStorage } from 'electron'
 import { getTdjson } from 'prebuilt-tdlib'
@@ -18,6 +18,7 @@ import type {
 } from '../../shared/contracts'
 import type { StoredConnectionSettings } from './connection-settings'
 import { CredentialStore } from './credential-store'
+import { createDatabaseEncryptionKey, normalizeDatabaseEncryptionKey } from './database-key'
 import { assertSecureStorageAvailable } from './secure-storage'
 
 type JsonObject = Record<string, unknown>
@@ -57,6 +58,37 @@ const connectionMessages: Record<string, string> = {
 
 const getErrorCode = (error: unknown): number | null => toNumber(toObject(error).code)
 
+const assertProxyReachable = (
+  proxy: NonNullable<StoredConnectionSettings['proxy']>
+): Promise<void> =>
+  new Promise((resolve, reject) => {
+    const socket = createConnection({ host: proxy.server, port: proxy.port })
+    const finish = (error?: Error) => {
+      clearTimeout(timeout)
+      socket.removeAllListeners()
+      socket.destroy()
+      if (error) reject(error)
+      else resolve()
+    }
+    const timeout = setTimeout(
+      () =>
+        finish(
+          new Error(
+            `无法连接代理服务器 ${proxy.server}:${proxy.port}，请确认代理软件正在运行且端口正确`
+          )
+        ),
+      5_000
+    )
+    socket.once('connect', () => finish())
+    socket.once('error', () =>
+      finish(
+        new Error(
+          `无法连接代理服务器 ${proxy.server}:${proxy.port}，请确认代理软件正在运行且端口正确`
+        )
+      )
+    )
+  })
+
 const getUnauthenticatedStatus = (settings: StoredConnectionSettings): AppStatus => ({
   configured: true,
   authorized: false,
@@ -73,6 +105,7 @@ export class TelegramService {
   private loginTimeout: ReturnType<typeof setTimeout> | null = null
   private loginTimedOut = false
   private suppressLoginErrors = false
+  private clientFailureMessage: string | null = null
   private leaveTaskActive = false
   private cancelRequested = false
   private readonly credentialStore = new CredentialStore()
@@ -137,6 +170,7 @@ export class TelegramService {
     this.emit({ stage: 'connecting', message: '正在连接 Telegram…' })
     this.loginTimedOut = false
     this.suppressLoginErrors = false
+    this.clientFailureMessage = null
 
     const task = this.runLogin(normalizedPhone)
     this.loginTask = task
@@ -159,16 +193,24 @@ export class TelegramService {
         this.clearLoginTimeout()
         this.rejectPendingInput('登录已终止')
         if (!this.loginTimedOut && !this.suppressLoginErrors) {
-          this.emit({ stage: 'error', message: sanitizeError(error) })
+          this.emit({
+            stage: 'error',
+            message: this.clientFailureMessage ?? sanitizeError(error)
+          })
         }
       })
       .finally(() => {
         this.loginTask = null
         this.loginTimedOut = false
+        this.clientFailureMessage = null
       })
   }
 
   private async runLogin(normalizedPhone: string): Promise<Client> {
+    const settings = await this.getSettings()
+    if (!settings) throw new Error('应用尚未配置 Telegram API 凭证')
+    if (settings.proxy) await assertProxyReachable(settings.proxy)
+
     const client = await this.ensureClient()
     await client.login({
       type: 'user',
@@ -451,7 +493,9 @@ export class TelegramService {
     })
 
     client.on('error', (error) => {
-      if (this.loginTask) this.emit({ stage: 'error', message: sanitizeError(error) })
+      if (!this.loginTask || this.suppressLoginErrors || this.clientFailureMessage) return
+      this.clientFailureMessage = sanitizeError(error)
+      void this.abortLoginClient()
     })
     client.on('update', (update) => {
       if (update._ !== 'updateConnectionState' || !this.loginTask || this.pendingInput) return
@@ -664,13 +708,13 @@ export class TelegramService {
     const keyPath = join(app.getPath('userData'), 'tdlib-key.bin')
     try {
       const encrypted = await readFile(keyPath)
-      return safeStorage.decryptString(encrypted)
+      return normalizeDatabaseEncryptionKey(safeStorage.decryptString(encrypted))
     } catch (error) {
       const code = toObject(error).code
       if (code !== 'ENOENT') throw error
     }
 
-    const key = randomBytes(32).toString('base64url')
+    const key = createDatabaseEncryptionKey()
     const encrypted = safeStorage.encryptString(key)
     try {
       await writeFile(keyPath, encrypted, { flag: 'wx', mode: 0o600 })

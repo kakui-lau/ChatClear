@@ -110,6 +110,7 @@ describe('TelegramService connection orchestration', () => {
 
   it('starts the login timeout before client and proxy initialization completes', async () => {
     vi.useFakeTimers()
+    mocks.saveSettings.mockResolvedValue({ ...storedSettings, proxy: null })
     mocks.invoke.mockImplementation(() => new Promise(() => undefined))
     const { events, service } = createService()
     await service.saveConnectionSettings(input)
