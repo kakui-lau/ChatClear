@@ -14,6 +14,10 @@
   <img alt="Platforms" src="https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-1f6f57">
 </p>
 
+<p align="center">
+  <strong>简体中文</strong> · <a href="./README.en.md">English</a>
+</p>
+
 ChatClear 使用 Telegram 官方 TDLib 同步群组和频道元数据，帮助用户筛选、保护并批量整理会话。消息正文不会被读取；API 凭证、Telegram session、偏好和操作记录均保存在用户自己的电脑上。
 
 > ChatClear 是非官方 Telegram 客户端工具，与 Telegram 无隶属、合作或认可关系。请遵守 Telegram API 条款及所在地法律法规。
@@ -53,7 +57,7 @@ macOS 首次打开被拦截时，请在“系统设置 → 隐私与安全性”
 
 - 不读取或展示消息正文
 - 不上传 Telegram session，不提供云端账号托管
-- API 凭证、代理密码和 TDLib 数据库密钥由操作系统安全存储加密
+- API 凭证、代理密码和 TDLib 数据库密钥使用 AES-256-GCM 与本机随机密钥加密，不调用系统钥匙串
 - 本地审计历史与 CSV 导出；导出时防止表格公式注入
 - 偏好备份只包含设置、筛选方案、白名单和观察清单
 - 最多管理 10 个本地账号，每个账号使用独立 TDLib 数据目录和密钥
@@ -105,10 +109,14 @@ React Renderer
 Electron Preload
       │ contextIsolation + sandbox
 Electron Main Process
-      ├── 系统安全存储
+      ├── 本地加密文件存储
       ├── 本地偏好与审计记录
       └── tdl / Telegram TDLib
 ```
+
+本地加密主密钥与密文均位于当前系统用户的应用数据目录，文件权限会尽量限制为当前用户可读写。这种模式可避免 macOS 钥匙串授权窗口，并能防止凭证以明文形式出现在磁盘中；但它不等同于操作系统钥匙串，已经能够读取当前用户应用数据目录的恶意程序仍可能同时取得密钥和密文。
+
+从 0.3.1 或更早版本升级到 0.3.2 时，ChatClear 不会访问旧版钥匙串数据，因此需要重新填写一次连接设置并重新登录 Telegram。旧版 session 文件不会被新版本加载。
 
 网络、登录、批处理、文件导入导出和系统能力全部位于 Electron 主进程。渲染进程不能访问 Node.js、凭证明文或 TDLib session。
 
@@ -155,8 +163,8 @@ pnpm dist -- --linux --x64
 
 ```bash
 pnpm check
-git tag v0.3.1
-git push origin v0.3.1
+git tag v0.3.2
+git push origin v0.3.2
 ```
 
 未配置签名 Secrets 时工作流仍会生成预发行测试包，但不应把它们描述为已签名版本。

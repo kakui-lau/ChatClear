@@ -7,10 +7,17 @@ interface SetupRequiredProps {
   busy: boolean
   error: string | null
   locale: Locale
+  migrationRequired?: boolean
   onSave(settings: ConnectionSettingsInput): Promise<void>
 }
 
-export function SetupRequired({ busy, error, locale, onSave }: SetupRequiredProps) {
+export function SetupRequired({
+  busy,
+  error,
+  locale,
+  migrationRequired,
+  onSave
+}: SetupRequiredProps) {
   const [apiId, setApiId] = useState('')
   const [apiHash, setApiHash] = useState('')
   const [proxyType, setProxyType] = useState<ProxyType>('none')
@@ -47,6 +54,15 @@ export function SetupRequired({ busy, error, locale, onSave }: SetupRequiredProp
             'Use your own Telegram API credentials. ChatClear never bundles developer credentials; saved values are encrypted locally.'
           )}
         </p>
+        {migrationRequired ? (
+          <p className="field-hint" role="status">
+            {tx(
+              locale,
+              '检测到旧版钥匙串数据。为避免系统授权窗口，本版本不会读取它；请重新填写设置并重新登录一次。',
+              'Legacy keychain data was detected. To avoid a system permission prompt, this version will not read it; enter your settings and sign in once more.'
+            )}
+          </p>
+        ) : null}
 
         <form className="auth-form" onSubmit={handleSubmit}>
           <div className="field-row">
@@ -167,7 +183,7 @@ export function SetupRequired({ busy, error, locale, onSave }: SetupRequiredProp
             type="submit"
           >
             {busy
-              ? tx(locale, '正在安全保存…', 'Saving securely…')
+              ? tx(locale, '正在加密保存…', 'Saving encrypted data…')
               : tx(locale, '保存连接设置', 'Save connection settings')}
           </button>
         </form>
@@ -182,8 +198,8 @@ export function SetupRequired({ busy, error, locale, onSave }: SetupRequiredProp
           <p>
             {tx(
               locale,
-              'API 凭证及代理认证信息由操作系统安全存储加密，不会写入安装包或上传。',
-              'API credentials and proxy authentication are encrypted by the operating system and never bundled or uploaded.'
+              'API 凭证及代理认证信息使用本机随机密钥加密保存，不调用系统钥匙串，也不会写入安装包或上传。',
+              'API credentials and proxy authentication are encrypted with a local random key, without using the system keychain, and are never bundled or uploaded.'
             )}
           </p>
         </div>

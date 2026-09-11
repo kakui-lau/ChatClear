@@ -10,8 +10,10 @@
 ## 数据与凭证边界
 
 - ChatClear 不内置 Telegram `api_id/api_hash`，由每位用户自行配置。
-- API 凭证和代理认证信息由 Electron `safeStorage` 加密并仅保存在当前系统用户的应用数据目录。
-- Linux 环境若只能使用 `basic_text` 后备存储，应用会拒绝保存凭证并提示启用 Secret Service。
+- API 凭证、代理认证信息和 TDLib 数据库密钥使用 AES-256-GCM 与安装时生成的随机主密钥加密，仅保存在当前系统用户的应用数据目录。
+- 应用不会调用 macOS 钥匙串、Windows Credential Manager 或 Linux Secret Service，因此不会出现对应的系统授权窗口。
+- 打包时显式关闭 Electron `cookieEncryption` fuse，避免 Chromium Cookie 存储间接调用系统钥匙串；应用不使用 Cookie 保存登录信息。
+- 主密钥文件与密文分离，应用在支持权限位的平台上将其限制为当前用户可读写。该设计用于避免磁盘明文和意外泄露，但不能抵御已经获得当前系统用户文件读取权限的恶意程序。
 - Telegram session 和 TDLib 数据保存在本机，不上传到 ChatClear 服务。
 - 应用不读取消息正文；退出群组只能在用户明确选择并二次确认后执行。
 

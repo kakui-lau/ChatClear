@@ -34,6 +34,7 @@ export interface AppStatus {
   profile: UserProfile | null
   proxyEnabled: boolean
   activeAccountId: string
+  storageMigrationRequired?: boolean
 }
 
 export type ProxyType = 'none' | 'socks5' | 'http'

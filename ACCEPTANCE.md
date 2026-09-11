@@ -1,22 +1,24 @@
-# ChatClear 0.3.1 验收记录
+# ChatClear 0.3.2 验收记录
 
 验收日期：2026-09-11
 
 ## 结果
 
-0.3.1 的开发版、生产构建和 macOS arm64 安装包已通过本地验收。打包版能够恢复本机既有 Telegram 会话并同步群组元数据；验收过程没有勾选任何真实会话，也没有执行归档、静音、清除历史或退出群组。当前 macOS 包使用完整临时签名，但尚未使用 Developer ID 签名和公证，只适合预发行测试。
+0.3.2 的开发版、生产构建和 macOS arm64 安装包已通过本地验收。新版不再调用操作系统钥匙串，API 凭证、代理认证信息和 TDLib 数据库密钥改用 AES-256-GCM 与本机随机主密钥加密。验收过程没有使用真实 Telegram 凭证，也没有执行归档、静音、清除历史或退出群组。当前 macOS 包使用完整临时签名，但尚未使用 Developer ID 签名和公证，只适合预发行测试。
 
 ## 自动化检查
 
 - `pnpm lint`
 - `pnpm format:check`
 - `pnpm typecheck`
-- `pnpm test`：6 个测试文件、41 项测试通过
+- `pnpm test`：8 个测试文件、47 项测试通过
 - `pnpm build`
 - `pnpm audit --prod`：未发现已知漏洞
 - `pnpm dist -- --mac --arm64`
-- `hdiutil verify dist/ChatClear-0.3.1-arm64.dmg`
+- `hdiutil verify dist/ChatClear-0.3.2-arm64.dmg`
 - `codesign --verify --deep --strict --verbose=4 dist/mac-arm64/ChatClear.app`
+- 使用隔离的全新用户数据目录启动打包版并进入首次配置界面
+- 检查生产主进程产物中不存在 `safeStorage` 或 `Safe Storage` 引用
 
 ## 功能验收
 
@@ -35,14 +37,20 @@
 - 最多 10 个本地账号，独立 TDLib 数据目录和数据库密钥
 - 简体中文/英文、浅色/深色/跟随系统主题
 - 固定应用框架与单一表格滚动区域，避免外层和列表嵌套滚动
+- 顶部栏品牌区、快捷操作区与账户区在桌面、窄窗口和深色主题下布局正常；图标模式保留可访问名称
+- 弹窗及任务进度卡片的关闭按钮具有清晰边界和足够点击热区，支持鼠标、键盘与 Escape 关闭
 - 顶部联系与支持入口、Telegram 联系按钮和赞助地址复制
 - 启动更新检查、GitHub Release 下载入口和默认关闭的崩溃报告
 - 跳过链接、键盘焦点、减少动态效果和 Escape 取消
-- 打包版恢复既有本机会话并显示新 0.3.1 界面，无控制台阻断错误
+- 打包版使用隔离目录正常启动，无控制台阻断错误或钥匙串访问
 
 ## 安全与生产包检查
 
-- API 凭证和代理认证信息由操作系统安全存储加密
+- API 凭证、代理认证信息和 TDLib 数据库密钥使用 AES-256-GCM 本地加密
+- 本地随机主密钥为 32 字节，密钥文件权限在 macOS/Linux 上限制为 `0600`
+- 密文使用随机 nonce、认证标签和用途绑定，篡改或跨用途替换会被拒绝
+- 主进程不再导入或调用 Electron `safeStorage`
+- Electron `EnableCookieEncryption` fuse 已验证为关闭，Cookie 存储不会间接访问系统钥匙串
 - Telegram session、账号数据和批处理状态按账号隔离
 - 偏好备份不包含 API 凭证、代理密码、Telegram session、操作历史或未完成任务
 - 渲染进程启用上下文隔离，不能访问 Node.js、凭证明文或 TDLib session
@@ -50,7 +58,7 @@
 - 安装包中不存在 `.env`、验收模拟数据或 TDLib 数据库密钥
 - 用户在开发期间提供的 API ID/API Hash 未出现在应用目录、ASAR、DMG 或 ZIP 中
 - arm64 TDLib 动态库已包含在 `asar.unpacked` 中
-- 应用标识为 `com.chatclear.desktop`，产品名为 ChatClear，版本为 0.3.1
+- 应用标识为 `com.chatclear.desktop`，产品名为 ChatClear，版本为 0.3.2
 - macOS 应用完整临时签名通过严格校验，原生 TDLib 可在 Hardened Runtime 下正常载入
 - DMG 文件结构与校验有效
 
@@ -69,3 +77,7 @@
 - 使用专用测试账号完成真实批处理和断网恢复验收
 - 补齐发行主体、支持邮箱、隐私政策适用地区和用户权利说明
 - 对各平台原生 TDLib 产物执行最终供应链审计
+
+## 升级说明
+
+0.3.1 及更早版本的凭证和 TDLib 数据库密钥由系统钥匙串保护。0.3.2 为保证不出现钥匙串授权窗口，不会尝试读取这些旧密文；升级用户需要重新填写 API 配置并重新登录一次。新版使用独立的 TDLib 数据目录，旧 session 文件保留在原目录但不会被加载。

@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { chmod, mkdir, readFile, writeFile } from 'node:fs/promises'
 import { createConnection } from 'node:net'
 import { dirname, join } from 'node:path'
-import { app, safeStorage, shell } from 'electron'
+import { app, shell } from 'electron'
 import { getTdjson } from 'prebuilt-tdlib'
 import * as tdl from 'tdl'
 import type { Client } from 'tdl'
@@ -29,7 +29,7 @@ import type { StoredConnectionSettings } from './connection-settings'
 import { CredentialStore } from './credential-store'
 import { createDatabaseEncryptionKey, normalizeDatabaseEncryptionKey } from './database-key'
 import { LocalDataStore } from './local-data-store'
-import { assertSecureStorageAvailable } from './secure-storage'
+import { LocalVault } from './local-vault'
 
 type JsonObject = Record<string, unknown>
 type EventSink = (event: AuthEvent | LeaveProgress) => void
@@ -137,6 +137,7 @@ export class TelegramService {
   private readonly credentialStore = new CredentialStore()
   private readonly accountStore = new AccountStore()
   private readonly localDataStore = new LocalDataStore()
+  private readonly localVault = new LocalVault()
 
   constructor(private readonly emit: EventSink) {
     const tdjsonPath = getTdjson()
@@ -155,7 +156,8 @@ export class TelegramService {
         authorized: false,
         profile: null,
         proxyEnabled: false,
-        activeAccountId
+        activeAccountId,
+        storageMigrationRequired: await this.credentialStore.hasLegacySettings()
       }
     }
 
@@ -979,37 +981,38 @@ export class TelegramService {
 
   private getAccountBaseDirectory(accountId: string, settings: StoredConnectionSettings): string {
     return accountId === 'default'
-      ? join(app.getPath('userData'), 'telegram-data', String(settings.apiId))
-      : join(app.getPath('userData'), 'telegram-data', 'accounts', accountId)
+      ? join(app.getPath('userData'), 'telegram-data-local-v1', String(settings.apiId))
+      : join(app.getPath('userData'), 'telegram-data-local-v1', 'accounts', accountId)
   }
 
   private getDatabaseKeyPath(accountId: string): string {
     return accountId === 'default'
-      ? join(app.getPath('userData'), 'tdlib-key.bin')
-      : join(app.getPath('userData'), 'tdlib-keys', `${accountId}.bin`)
+      ? join(app.getPath('userData'), 'tdlib-key.local-v1.bin')
+      : join(app.getPath('userData'), 'tdlib-keys-local-v1', `${accountId}.bin`)
   }
 
   private async getDatabaseEncryptionKey(accountId: string): Promise<string> {
-    assertSecureStorageAvailable('保存 Telegram 登录会话')
-
     const keyPath = this.getDatabaseKeyPath(accountId)
+    const purpose = `tdlib-database-key:${accountId}`
     try {
       const encrypted = await readFile(keyPath)
-      return normalizeDatabaseEncryptionKey(safeStorage.decryptString(encrypted))
+      return normalizeDatabaseEncryptionKey(await this.localVault.decryptString(encrypted, purpose))
     } catch (error) {
       const code = toObject(error).code
       if (code !== 'ENOENT') throw error
     }
 
     const key = createDatabaseEncryptionKey()
-    const encrypted = safeStorage.encryptString(key)
+    const encrypted = await this.localVault.encryptString(key, purpose)
     await mkdir(dirname(keyPath), { recursive: true, mode: 0o700 })
     try {
       await writeFile(keyPath, encrypted, { flag: 'wx', mode: 0o600 })
       return key
     } catch (error) {
       if (toObject(error).code !== 'EEXIST') throw error
-      return normalizeDatabaseEncryptionKey(safeStorage.decryptString(await readFile(keyPath)))
+      return normalizeDatabaseEncryptionKey(
+        await this.localVault.decryptString(await readFile(keyPath), purpose)
+      )
     }
   }
 }

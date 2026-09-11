@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { SPONSOR_ADDRESS, type Locale } from '../../shared/contracts'
 import { tx } from '../i18n'
+import { CloseButton } from './CloseButton'
 
 interface SupportDialogProps {
   locale: Locale
@@ -42,9 +43,7 @@ export function SupportDialog({
           <p className="eyebrow">CONTACT & SUPPORT</p>
           <h2 id="support-title">{tx(locale, '联系与支持', 'Contact & support')}</h2>
         </div>
-        <button className="text-button" type="button" onClick={onClose}>
-          {tx(locale, '关闭', 'Close')}
-        </button>
+        <CloseButton locale={locale} onClick={onClose} />
       </div>
 
       <section className="support-section">

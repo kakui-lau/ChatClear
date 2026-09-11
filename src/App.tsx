@@ -24,12 +24,14 @@ import {
 } from './community-filters'
 import { Brand } from './components/Brand'
 import { CommunityTable } from './components/CommunityTable'
+import { CloseButton } from './components/CloseButton'
 import { ConfirmDialog } from './components/ConfirmDialog'
 import { HistoryDialog } from './components/HistoryDialog'
 import { LoginScreen } from './components/LoginScreen'
 import { SettingsDialog } from './components/SettingsDialog'
 import { SetupRequired } from './components/SetupRequired'
 import { SupportDialog } from './components/SupportDialog'
+import { Topbar } from './components/Topbar'
 import { tx } from './i18n'
 
 const initialAuthEvent: AuthEvent = { stage: 'idle' }
@@ -720,6 +722,7 @@ export default function App() {
         busy={configBusy}
         error={error}
         locale={locale}
+        migrationRequired={status.storageMigrationRequired}
         onSave={handleSaveConnectionSettings}
       />
     )
@@ -751,34 +754,14 @@ export default function App() {
       <a className="skip-link" href="#main-content">
         {tx(locale, '跳到主要内容', 'Skip to main content')}
       </a>
-      <header className="topbar">
-        <Brand />
-        <div className="topbar-actions">
-          <button className="text-button" type="button" onClick={() => setShowSupport(true)}>
-            {tx(locale, '联系', 'Contact')}
-          </button>
-          <button className="text-button" type="button" onClick={() => setShowHistory(true)}>
-            {tx(locale, '历史', 'History')}
-          </button>
-          <button className="text-button" type="button" onClick={() => setShowSettings(true)}>
-            {tx(locale, '设置', 'Settings')}
-          </button>
-          <div className="profile-block">
-            <span className="profile-avatar" aria-hidden="true">
-              {profile?.displayName.slice(0, 1).toUpperCase() ?? 'U'}
-            </span>
-            <span>
-              <strong>{profile?.displayName}</strong>
-              <small>
-                {profile?.username ? `@${profile.username}` : tx(locale, '已安全登录', 'Signed in')}
-              </small>
-            </span>
-            <button className="text-button" type="button" onClick={handleLogout}>
-              {tx(locale, '注销', 'Sign out')}
-            </button>
-          </div>
-        </div>
-      </header>
+      <Topbar
+        locale={locale}
+        profile={profile}
+        onContact={() => setShowSupport(true)}
+        onHistory={() => setShowHistory(true)}
+        onLogout={handleLogout}
+        onSettings={() => setShowSettings(true)}
+      />
 
       <main className="dashboard" id="main-content" tabIndex={-1}>
         <section className="page-heading">
@@ -1160,9 +1143,7 @@ export default function App() {
             </button>
           ) : (
             <div className="inline-actions">
-              <button className="text-button" type="button" onClick={() => setLeaveProgress(null)}>
-                {tx(locale, '关闭', 'Close')}
-              </button>
+              <CloseButton compact locale={locale} onClick={() => setLeaveProgress(null)} />
               {leaveProgress.status === 'done' ? (
                 <button
                   className="text-button"

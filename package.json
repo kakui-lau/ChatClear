@@ -1,6 +1,6 @@
 {
   "name": "chatclear",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "private": true,
   "author": "ChatClear",
   "description": "A local-first desktop utility for reviewing and leaving Telegram groups.",
@@ -73,6 +73,9 @@
       "node_modules/tdl/**/*",
       "node_modules/prebuilt-tdlib/**/*"
     ],
+    "electronFuses": {
+      "enableCookieEncryption": false
+    },
     "files": [
       "out/**/*",
       "node_modules/**/*",

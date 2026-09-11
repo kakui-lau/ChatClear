@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import type { ActivityLogEntry, BatchAction, Locale } from '../../shared/contracts'
 import { tx } from '../i18n'
+import { CloseButton } from './CloseButton'
 
 interface HistoryDialogProps {
   entries: ActivityLogEntry[]
@@ -33,9 +34,7 @@ export function HistoryDialog({ entries, locale, onClose, onExport, onRetry }: H
           <p className="eyebrow">AUDIT LOG</p>
           <h2>{tx(locale, '本地操作历史', 'Local activity history')}</h2>
         </div>
-        <button className="text-button" type="button" onClick={onClose}>
-          {tx(locale, '关闭', 'Close')}
-        </button>
+        <CloseButton locale={locale} onClick={onClose} />
       </div>
       <div className="panel-actions">
         <button className="secondary-button" type="button" onClick={onExport}>

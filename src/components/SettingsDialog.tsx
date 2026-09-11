@@ -6,6 +6,7 @@ import type {
   UpdateStatus
 } from '../../shared/contracts'
 import { tx } from '../i18n'
+import { CloseButton } from './CloseButton'
 
 interface SettingsDialogProps {
   accounts: AccountSummary[]
@@ -56,9 +57,7 @@ export function SettingsDialog({
           <p className="eyebrow">PREFERENCES</p>
           <h2>{tx(locale, '设置与账号', 'Settings & accounts')}</h2>
         </div>
-        <button className="text-button" type="button" onClick={onClose}>
-          {tx(locale, '关闭', 'Close')}
-        </button>
+        <CloseButton locale={locale} onClick={onClose} />
       </div>
 
       <section>

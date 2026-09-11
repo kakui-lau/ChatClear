@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   invoke: vi.fn(),
   isClosed: vi.fn(() => false),
   login: vi.fn(),
+  hasLegacySettings: vi.fn(async () => false),
   loadSettings: vi.fn(async () => null),
   saveSettings: vi.fn()
 }))
@@ -17,8 +18,7 @@ vi.mock('electron', () => ({
     getPath: () => '/tmp/chatclear-test',
     getVersion: () => '0.2.1',
     isPackaged: false
-  },
-  safeStorage: {}
+  }
 }))
 
 vi.mock('prebuilt-tdlib', () => ({ getTdjson: () => '/tmp/libtdjson.dylib' }))
@@ -30,6 +30,7 @@ vi.mock('tdl', () => ({
 
 vi.mock('../electron/main/credential-store', () => ({
   CredentialStore: class {
+    hasLegacySettings = mocks.hasLegacySettings
     load = mocks.loadSettings
     save = mocks.saveSettings
     clear = vi.fn(async () => undefined)
